@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "45673:45673"
+    volumes:
+      - ./api-gateway:/usr/src/app
+    command: npm run start:dev
+    depends_on:
+      - inventoryDB
+      - ms-inventory
+    environment:
+      INVENTORY_MICROSERVICE_HOST: ms-inventory
+      INVENTORY_MICROSERVICE_PORT: 45674
+    networks:
+      - app-inventory-network
+
+  ms-inventory:
+    build:
+      context: ./ms-inventory
+      dockerfile: Dockerfile
+    ports:
+      - "45674:45674"
+    volumes:
+      - ./ms-inventory:/usr/src/app
+    command: npm run start:dev
+    depends_on:
+      - inventoryDB
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@inventoryDB:5432/inventory
+    networks:
+      - app-inventory-network
+
+  inventoryDB:
+    image: postgres:14.3-alpine
+    container_name: inventoryDB
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=inventory
+    volumes:
+      - ./ms-inventory/postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-inventory-network
+
+networks:
+  app-inventory-network:
+    driver: bridge
